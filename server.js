@@ -22,7 +22,7 @@ app.all("/" + process.env.BOT_ENDPOINT, function (req, res) {
   /* The example below tweets out "Hello world!". */
   T.post('statuses/update', { status: 'hello world 👋' }, function(err, data, response) {
     if (err){
-      console.log('Error!', err);
+      console.log('error!', err);
       res.sendStatus(500);
     }
     else{
