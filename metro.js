@@ -51,8 +51,8 @@ function toWorldCoordY(tileY, gridDesc) {
 function allVertices(gridDesc) {
   const points = [];
   
-  for (var tY = gridDesc.tl.tY+1; tY < gridDesc.br.tY; tY++) {
-    for (var tX = gridDesc.tl.tX+1; tX < gridDesc.br.tX; tX++) {
+  for (var tY = gridDesc.tl.tY; tY < gridDesc.br.tY; tY++) {
+    for (var tX = gridDesc.tl.tX; tX < gridDesc.br.tX; tX++) {
       var p = gridPointFromGridSpace(tX,tY,gridDesc);
       points.push(p);
     }
@@ -93,8 +93,8 @@ function edgeBetweenGridPoints(x0,y0,x1,y1,gridDesc) {
 function allEdges(gridDesc) {
   const edges = [];
   
-  for (var tY = gridDesc.tl.tY+1; tY < gridDesc.br.tY; tY++) {
-    for (var tX = gridDesc.tl.tX+1; tX < gridDesc.br.tX; tX++) {
+  for (var tY = gridDesc.tl.tY; tY < gridDesc.br.tY; tY++) {
+    for (var tX = gridDesc.tl.tX; tX < gridDesc.br.tX; tX++) {
       const evenX = tX % 2 === 0;
       const evenY = tY % 2 === 0;
       if (evenX === evenY) {
