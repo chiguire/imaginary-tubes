@@ -4,7 +4,11 @@ const path = require('path'),
       fs = require('fs'),
       MersenneTwister = require('mersenne-twister');
 
-function gridDescription(originX, originY, tileWidth, tileHeight, canvasOriginX, canvasOriginY, canvasWidth, canvasHeight, randomGenerator) {
+function gridDescription(originX, originY, 
+                         tileWidth, tileHeight, 
+                         canvasOriginX, canvasOriginY, 
+                         canvasWidth, canvasHeight, 
+                         randomGenerator) {
   const gridDescBasic = {
     originX,
     originY,
@@ -92,6 +96,21 @@ function edgeBetweenGridPoints(x0,y0,x1,y1,gridDesc) {
   };
 }
 
+function directionToXY(dir) {
+  switch (dir) {
+    case 'ul': return {x: -1, y: -1};
+    case 'u' : return {x: 0,  y: -1};
+    case 'ur': return {x: 1,  y: -1};
+    case 'l' : return {x: -1, y: 0};
+    case 'r' : return {x: 1,  y: 0};
+    case 'dl': return {x: -1, y: 1};
+    case 'd' : return {x: 0, y: 1};
+    case 'dr': return {x: 1, y: 1};
+    default: console.trace('unknown direction: '+dir); break;
+  }
+  return undefined;
+}
+
 function allEdges(gridDesc) {
   const edges = [];
   
@@ -113,14 +132,14 @@ function allEdges(gridDesc) {
   return edges;
 }
 
-function edgesFromPoint(tX,tY,gridDesc) {
+function directionsFromPoint(tX,tY,gridDesc) {
   const evenX = tX % 2 === 0;
   const evenY = tY % 2 === 0;
   const directionsToRemove = [].concat(
     (tX <= gridDesc.tl.tX? ['ul','l','dl']: []),
     (tY <= gridDesc.tl.tY? ['ul','u','ur']: []),
-    (tX >= gridDesc.br.tX? ['ur','r','dr']: []),
-    (tY >= gridDesc.br.tY? ['dl','d','dr']: [])
+    (tX >= (gridDesc.br.tX-1)? ['ur','r','dr']: []),
+    (tY >= (gridDesc.br.tY-1)? ['dl','d','dr']: [])
   );
   
   var directionsToAdd = undefined;
@@ -130,12 +149,16 @@ function edgesFromPoint(tX,tY,gridDesc) {
     directionsToAdd = ['u','l','r','d'];
   }
   
-  const directions = (directionsToRemove.length == 0?
+  return (directionsToRemove.length == 0?
     directionsToAdd:
     directionsToAdd.filter(function (d) {
       return !directionsToRemove.includes(d);
     })
   );
+}
+
+function edgesFromPoint(tX,tY,gridDesc) {
+  const directions = directionsFromPOint(tX,tY,gridDesc);
   
   const edges = directions.map(function (d) {
     var dx = 0, dy =0;
@@ -199,6 +222,9 @@ function edgeExtremes() {
 }
 
 function choose(arr, rndGen) {
+  if (arr.length === 0) {
+    return null;
+  }
   return arr[Math.floor(rndGen.random() * arr.length)];
 }
 
@@ -209,24 +235,40 @@ function vertexInsideGrid(tX, tY, gridDesc) {
          tY <= gridDesc.br.tY;
 }
 
-function chooseDirection(dX, dY, extremes, rnd) {
+function chooseDirection(dX, dY, pX, pY, extremes, gridDesc) {
+  const possibleDirectionsFromPoint = directionsFromPoint(pX, pY, gridDesc);
+  
   if (dX < 0) {
-    var nX = Math.round(rnd.random()-1); // -1 or 0
+    if (dY < 0) {        // ul
+      var preferredDirections = ['ul','u','l'];
+    } else if (dY > 0) { // dl
+      var preferredDirections = ['dl','d','l'];
+    } else {             // l
+      var preferredDirections = ['ul','l','dl'];
+    }
   } else if (dX > 0) {
-    var nX = Math.round(rnd.random()); // 0 or 1
+    if (dY < 0) {        // ur
+      var preferredDirections = ['ur','u','r'];
+    } else if (dY > 0) { // dr
+      var preferredDirections = ['dr','d','r'];
+    } else {             // d
+      var preferredDirections = ['dr','d','dl'];
+    }
   } else {
-    var nX = Math.round((rnd.random() - 0.5)*2.9);
+    if (dY < 0) {        // u
+      var preferredDirections = ['ul','u','ur'];
+    } else if (dY > 0) { // d
+      var preferredDirections = ['dl','d','dr'];
+    } else {             // no direction, weird
+      console.log("no direction, weird");
+    }
   }
   
-  if (dY < 0) {
-    var nY = Math.round(rnd.random()-1); // -1 or 0
-  } else if (dY > 0) {
-    var nY = Math.round(rnd.random()); // 0 or 1
-  } else {
-    var nY = Math.round((rnd.random() - 0.5)*2.9);
-  }
+  const dirs = preferredDirections.filter(function (d) {
+    return possibleDirectionsFromPoint.includes(d);
+  });
   
-  return { dX: nX, dY: nY };
+  return directionToXY(choose(dirs, gridDesc.rnd));
 }
 
 function generateSegments(extremes, gridDesc) {
@@ -275,9 +317,9 @@ function generateSegments(extremes, gridDesc) {
     pY += dY;
     currentSegmentDistance -= 1;
     if (currentSegmentDistance === 0) {
-      var newDirection = chooseDirection(dX, dY, extremes, rnd);
-      dX = newDirection.dX;
-      dY = newDirection.dY;
+      var newDirection = chooseDirection(dX, dY, pX, pY, extremes, gridDesc);
+      dX = newDirection.x;
+      dY = newDirection.y;
       currentSegmentDistance = givenSegmentDistance;
     }
   }
@@ -303,7 +345,6 @@ function tubeLines(gridDesc) {
 
 function drawLines(c, lines) {
   lines.forEach(function (line) {
-    console.log(line.extremes);
     line.segments.forEach(function (edge) {
       var e = new fabric.Line([edge.a.x,edge.a.y,edge.b.x,edge.b.y], {
         stroke: 'rgba(255,0,0,1)',
@@ -339,3 +380,8 @@ function choumein() {
 }
 
 choumein();
+exports = {
+  gridDescription,
+  tubeLines,
+  drawLines
+};
