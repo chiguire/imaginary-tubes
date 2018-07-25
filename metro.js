@@ -138,8 +138,8 @@ function directionsFromPoint(tX,tY,gridDesc) {
   const directionsToRemove = [].concat(
     (tX <= gridDesc.tl.tX? ['ul','l','dl']: []),
     (tY <= gridDesc.tl.tY? ['ul','u','ur']: []),
-    (tX >= (gridDesc.br.tX-1)? ['ur','r','dr']: []),
-    (tY >= (gridDesc.br.tY-1)? ['dl','d','dr']: [])
+    (tX >= (gridDesc.br.tX)? ['ur','r','dr']: []),
+    (tY >= (gridDesc.br.tY)? ['dl','d','dr']: [])
   );
   
   var directionsToAdd = undefined;
@@ -218,7 +218,7 @@ function drawTetrakisGrid(c, gridDesc) {
 }
 
 function edgeExtremes() {
-  return ['lr','rl','ud','du'];
+  return ['lr','ud'];
 }
 
 function choose(arr, rndGen) {
@@ -271,59 +271,168 @@ function chooseDirection(dX, dY, pX, pY, extremes, gridDesc) {
   return directionToXY(choose(dirs, gridDesc.rnd));
 }
 
+
+function chooseDirection2(diffX, diffY, absDiffX, absDiffY, pX, pY, generalDirection, gridDesc) {
+  const possibleDirectionsFromPoint = directionsFromPoint(pX, pY, gridDesc);
+  var dX = null;
+  var dY = null;
+  
+  if (absDiffX > absDiffY) {
+    if (diffX < 0) {
+      var idealDirection = 'l';
+    } else if (diffX > 0) {
+      var idealDirection = 'r';
+    } else {
+      console.log({diffX,diffY,absDiffX,absDiffY,pX,pY,generalDirection});
+      console.trace("diffX > diffY && diffX == 0?????");
+    }
+  } else if (absDiffX < absDiffY) {
+    if (diffY < 0) {
+      var idealDirection = 'u';
+    } else if (diffY > 0) {
+      var idealDirection = 'd';
+    } else {
+      console.log({diffX,diffY,absDiffX,absDiffY,pX,pY,generalDirection});
+      console.trace("diffY > diffX && diffY == 0?????");
+    }
+  } else {
+    if (diffX < 0) {
+      if (diffY < 0) {
+        var idealDirection = 'ul';
+      } else if (diffY > 0) {
+        var idealDirection = 'dl';
+      } else {
+        var idealDirection = 'l';
+      }
+    } else if (diffX > 0) {
+      if (diffY < 0) {
+        var idealDirection = 'ur';
+      } else if (diffY > 0) {
+        var idealDirection = 'dr';
+      } else {
+        var idealDirection = 'r';
+      }
+    } else {
+      console.log({diffX,diffY,absDiffX,absDiffY,pX,pY,generalDirection});
+      console.trace("diffX > diffY && diffX == 0?????");
+    }
+  }
+  
+  if (possibleDirectionsFromPoint.includes(idealDirection)) {
+    return idealDirection;
+  } else { // Project ideal Direction over possibilities
+    var projectedDirection = possibleDirectionsFromPoint.find(d => idealDirection.indexOf(d) !== -1);
+    if (typeof projectedDirection === "undefined") {
+      console.trace("Projected direction is undefined. Ideal Direction: " + idealDirection + ", Possible: " + JSON.stringify(possibleDirectionsFromPoint) + ", Point: " + pX + ", " + pY);
+    }
+    return projectedDirection;
+  }
+}
+
+function flatten(items) {
+	const flat = [];
+	items.forEach(item => {
+		if (Array.isArray(item)) {
+			flat.push(...flatten(item));
+		} else {
+			flat.push(item);
+		}
+	});
+	return flat;
+}
+
+function recursiveLineBreak(lines, maxLevel, gridDesc) {
+  return flatten(lines.map(function (line) {
+    const midPoint = {
+      x: Math.round(line.x0 + (line.x1-line.x0)/2),
+      y: Math.round(line.y0 + (line.y1-line.y0)/2),
+    };
+    //const midPointGrid = gridPointFromWorldSpace(midPoint.x, midPoint.y, gridDesc, Math.round);
+    return [
+      {
+        x0: line.x0,
+        y0: line.y0,
+        x1: midPoint.x,
+        y1: midPoint.y,
+      },
+      {
+        x0: midPoint.x,
+        y0: midPoint.y,
+        x1: line.x1,
+        y1: line.y1,
+      },
+    ];
+  }));
+}
+
+function rasterizeLines(lines, extremes, gridDesc) {
+  var rasterizedLines = lines.map(function (line) {
+    var pX = line.x0;
+    var pY = line.y0;
+    var diffX = line.x1 - pX;
+    var diffY = line.y1 - pY;
+    var absDiffX = Math.abs(diffX);
+    var absDiffY = Math.abs(diffY);
+    var segments = [];
+    var vertices = [gridPointFromGridSpace(pX, pY, gridDesc)];
+    
+    console.log("Rasterizing");
+    console.log(line);
+    while (absDiffX + absDiffY !== 0) {
+      const direction = chooseDirection2(diffX, diffY, absDiffX, absDiffY, pX, pY, extremes, gridDesc);
+      const directionXY = directionToXY(direction);
+      const dX = directionXY.x;
+      const dY = directionXY.y;
+      //console.log({diffX,diffY,absDiffX,absDiffY,pX,pY,extremes,direction,dX,dY});
+      const nX = pX + dX;
+      const nY = pY + dY;
+      segments.push(edgeBetweenGridPoints(pX, pY, nX, nY, gridDesc));
+      vertices.push(gridPointFromGridSpace(nX, nY, gridDesc));
+      pX = nX;
+      pY = nY;
+      diffX = line.x1 - pX;
+      diffY = line.y1 - pY;
+      absDiffX = Math.abs(diffX);
+      absDiffY = Math.abs(diffY);
+    }
+    
+    return { segments, vertices };
+  });
+  
+  return {
+    segments: flatten(rasterizedLines.map(l => l.segments)),
+    vertices: flatten(rasterizedLines.map(l => l.vertices)),
+  };
+}
+
 function generateSegments(extremes, gridDesc) {
   var rnd = gridDesc.rnd;
   switch (extremes) {
     case 'lr':
-      var pX = 0;
-      var pY = Math.floor(gridDesc.tl.tY+rnd.random()*(gridDesc.br.tY - gridDesc.tl.tY));
-      var dX = 1;
-      var dY = Math.round((rnd.random()-0.5)*2); // bias towards not moving
-      break;
-    case 'rl':
-      var pX = gridDesc.br.tX;
-      var pY = Math.floor(gridDesc.tl.tY+rnd.random()*(gridDesc.br.tY - gridDesc.tl.tY));
-      var dX = -1;
-      var dY = Math.round((rnd.random()-0.5)*2); // bias towards not moving
+      var x0 = 0;
+      var y0 = Math.floor(gridDesc.tl.tY+rnd.random()*(gridDesc.br.tY - gridDesc.tl.tY));
+      var x1 = gridDesc.br.tX;
+      var y1 = Math.floor(gridDesc.tl.tY+rnd.random()*(gridDesc.br.tY - gridDesc.tl.tY));
       break;
     case 'ud':
-      var pX = Math.floor(gridDesc.tl.tX+rnd.random()*(gridDesc.br.tX - gridDesc.tl.tX));
-      var pY = 0;
-      var dX = Math.round((rnd.random()-0.5)*2); // bias towards not moving
-      var dY = 1;
-      break;
-    case 'du':
-      var pX = Math.floor(gridDesc.tl.tX+rnd.random()*(gridDesc.br.tX - gridDesc.tl.tX));
-      var pY = gridDesc.br.tY;
-      var dX = Math.round((rnd.random()-0.5)*2); // bias towards not moving
-      var dY = -1;
+      var x0 = Math.floor(gridDesc.tl.tX+rnd.random()*(gridDesc.br.tX - gridDesc.tl.tX));
+      var y0 = 0;
+      var x1 = Math.floor(gridDesc.tl.tX+rnd.random()*(gridDesc.br.tX - gridDesc.tl.tX));
+      var y1 = gridDesc.br.tY;
       break;
     default:
       console.log('UNKNOWN EXTREMES ' + extremes);
       break;
   }
   
-  var segments = [];
-  var vertices = [{x: pX, y: pY}];
-  const givenSegmentDistance = 5;
-  var currentSegmentDistance = givenSegmentDistance;
-  while (vertexInsideGrid(pX+dX, pY+dY, gridDesc)) {
-    const newVertex = {x: pX+dX, y: pY+dY};
-    const newEdge = edgeBetweenGridPoints(pX, pY, newVertex.x, newVertex.y, gridDesc);
-    segments.push(newEdge);
-    vertices.push(newVertex);
-    
-    pX += dX;
-    pY += dY;
-    currentSegmentDistance -= 1;
-    if (currentSegmentDistance === 0) {
-      var newDirection = chooseDirection(dX, dY, pX, pY, extremes, gridDesc);
-      dX = newDirection.x;
-      dY = newDirection.y;
-      currentSegmentDistance = givenSegmentDistance;
-    }
-  }
-  return { segments, vertices };
+  console.log("Chosen extremes");
+  console.log({extremes,x0,y0,x1,y1});
+  const brokenLines = recursiveLineBreak([{x0,y0,x1,y1}],1,gridDesc);
+  console.log("Broken lines");
+  console.log({brokenLines});
+  const rasterizedLines = rasterizeLines(brokenLines, extremes, gridDesc);
+  
+  return rasterizedLines;
 }
 
 function tubeLine(name, color, otherLines, gridDesc) {
@@ -368,7 +477,8 @@ function choumein() {
   fabric.Object.prototype.originX = fabric.Object.prototype.originY = 'center';
   
   const gridDesc = gridDescription(0, 0, 20, 10, 0, 0, canvas.width-20, canvas.height-10, rnd);
-  //console.log(gridDesc);
+  console.log("Grid description");
+  console.log(gridDesc);
   const lines = tubeLines(gridDesc);
   
   drawTetrakisGrid(canvas, gridDesc);
