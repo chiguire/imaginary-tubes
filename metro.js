@@ -30,10 +30,34 @@ function gridDescription(originX, originY,
         Math.ceil
       ),
   };
+  // +x +y => 0..90
+  // +x -y => 90..180
+  // -x +y => -90..0
+  // -x -y => -180..-90
+  
+  const uAngle = 0;
+  const urAngle = Math.atan2(tileWidth, tileHeight);
+  const rAngle = Math.PI / 2.0;
+  const drAngle = Math.atan2(tileWidth, -tileHeight);
+  const dAngle = Math.PI;
+  const dlAngle = Math.atan2(-tileWidth, -tileHeight);
+  const lAngle = -Math.PI / 2.0;
+  const ulAngle = Math.atan2(-tileWidth, tileHeight);
+  const gridDescAngles = {
+    u:  [ulAngle / 2.0,                      urAngle / 2.0],
+    ur: [urAngle / 2.0,                      urAngle + (rAngle - urAngle) / 2.0],
+    r:  [urAngle + (rAngle - urAngle) / 2.0, rAngle + (drAngle - rAngle) / 2.0],
+    dr: [rAngle + (drAngle - rAngle) / 2.0,  drAngle + (dAngle - drAngle) / 2.0],
+    d:  [drAngle + (dAngle - drAngle) / 2.0, dlAngle + (-dAngle - dlAngle) / 2.0],
+    dl: [drAngle + (dAngle - drAngle) / 2.0, lAngle + (dlAngle - lAngle) / 2.0],
+    l:  [lAngle + (dlAngle - lAngle) / 2.0,  ulAngle + (lAngle - ulAngle) / 2.0],
+    ul: [ulAngle + (lAngle - ulAngle) / 2.0, uAngle + (ulAngle - uAngle) / 2.0],
+  }
   return Object.freeze(
     Object.assign(
       gridDescBasic,
-      gridDescDims
+      gridDescDims,
+      {angles: gridDescAngles}
     )
   );
 }
@@ -277,45 +301,31 @@ function chooseDirection2(diffX, diffY, absDiffX, absDiffY, pX, pY, generalDirec
   var dX = null;
   var dY = null;
   
-  if (absDiffX > absDiffY) {
-    if (diffX < 0) {
-      var idealDirection = 'l';
-    } else if (diffX > 0) {
-      var idealDirection = 'r';
-    } else {
-      console.log({diffX,diffY,absDiffX,absDiffY,pX,pY,generalDirection});
-      console.trace("diffX > diffY && diffX == 0?????");
-    }
-  } else if (absDiffX < absDiffY) {
-    if (diffY < 0) {
-      var idealDirection = 'u';
-    } else if (diffY > 0) {
-      var idealDirection = 'd';
-    } else {
-      console.log({diffX,diffY,absDiffX,absDiffY,pX,pY,generalDirection});
-      console.trace("diffY > diffX && diffY == 0?????");
-    }
+  var angle = Math.atan2(diffX, diffY) + Math.PI*2;
+  var angles = gridDesc.angles;
+  // +x +y => 0..90
+  // +x -y => 90..180
+  // -x +y => -90..0
+  // -x -y => -180..-90
+  
+  if (angles.u[0] + Math.PI*2 <= angle && angle <= angles.u[1] + Math.PI*2) {
+    var idealDirection = 'd';
+  } else if (angles.ur[0] + Math.PI*2 < angle && angle < angles.ur[1] + Math.PI*2) {
+    var idealDirection = 'dr';
+  } else if (angles.r[0] + Math.PI*2 <= angle && angle <= angles.r[1] + Math.PI*2) {
+    var idealDirection = 'r';
+  } else if (angles.dr[0] + Math.PI*2 < angle && angle < angles.dr[1] + Math.PI*2) {
+    var idealDirection = 'ur';
+  } else if (angles.d[0] + Math.PI*2 <= angle && angle <= angles.d[1] + Math.PI*2) {
+    var idealDirection = 'u';
+  } else if (angles.dl[0] + Math.PI*2 < angle && angle < angles.dl[1] + Math.PI*2) {
+    var idealDirection = 'ul';
+  } else if (angles.l[0] + Math.PI*2 <= angle && angle <= angles.l[1] + Math.PI*2) {
+    var idealDirection = 'l';
+  } else if (angles.ul[0] + Math.PI*2 < angle && angle < angles.ul[1] + Math.PI*2) {
+    var idealDirection = 'dl';
   } else {
-    if (diffX < 0) {
-      if (diffY < 0) {
-        var idealDirection = 'ul';
-      } else if (diffY > 0) {
-        var idealDirection = 'dl';
-      } else {
-        var idealDirection = 'l';
-      }
-    } else if (diffX > 0) {
-      if (diffY < 0) {
-        var idealDirection = 'ur';
-      } else if (diffY > 0) {
-        var idealDirection = 'dr';
-      } else {
-        var idealDirection = 'r';
-      }
-    } else {
-      console.log({diffX,diffY,absDiffX,absDiffY,pX,pY,generalDirection});
-      console.trace("diffX > diffY && diffX == 0?????");
-    }
+    console.trace("What direction to pick here? " + angle);
   }
   
   if (possibleDirectionsFromPoint.includes(idealDirection)) {
@@ -323,7 +333,7 @@ function chooseDirection2(diffX, diffY, absDiffX, absDiffY, pX, pY, generalDirec
   } else { // Project ideal Direction over possibilities
     var projectedDirection = possibleDirectionsFromPoint.find(d => idealDirection.indexOf(d) !== -1);
     if (typeof projectedDirection === "undefined") {
-      console.trace("Projected direction is undefined. Ideal Direction: " + idealDirection + ", Possible: " + JSON.stringify(possibleDirectionsFromPoint) + ", Point: " + pX + ", " + pY);
+      console.trace("Projected direction is undefined. Diff: (" + diffX + "," + diffY + ") Angle: " + (angle/Math.PI*180) + " Ideal Direction: " + idealDirection + ", Possible: " + JSON.stringify(possibleDirectionsFromPoint) + ", Point: " + pX + ", " + pY);
     }
     return projectedDirection;
   }
