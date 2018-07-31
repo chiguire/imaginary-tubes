@@ -308,21 +308,21 @@ function chooseDirection2(diffX, diffY, absDiffX, absDiffY, pX, pY, generalDirec
   // -x +y => -90..0
   // -x -y => -180..-90
   
-  if (angles.u[0] + Math.PI*2 <= angle && angle <= angles.u[1] + Math.PI*2) {
+  if (angles.u[0] + Math.PI*2 < angle && angle < angles.u[1] + Math.PI*2) {
     var idealDirection = 'd';
-  } else if (angles.ur[0] + Math.PI*2 < angle && angle < angles.ur[1] + Math.PI*2) {
+  } else if (angles.ur[0] + Math.PI*2 <= angle && angle <= angles.ur[1] + Math.PI*2) {
     var idealDirection = 'dr';
-  } else if (angles.r[0] + Math.PI*2 <= angle && angle <= angles.r[1] + Math.PI*2) {
+  } else if (angles.r[0] + Math.PI*2 < angle && angle < angles.r[1] + Math.PI*2) {
     var idealDirection = 'r';
-  } else if (angles.dr[0] + Math.PI*2 < angle && angle < angles.dr[1] + Math.PI*2) {
+  } else if (angles.dr[0] + Math.PI*2 <= angle && angle <= angles.dr[1] + Math.PI*2) {
     var idealDirection = 'ur';
-  } else if (angles.d[0] + Math.PI*2 <= angle && angle <= angles.d[1] + Math.PI*2) {
+  } else if (angles.d[0] + Math.PI*2 < angle && angle < angles.d[1] + Math.PI*2) {
     var idealDirection = 'u';
-  } else if (angles.dl[0] + Math.PI*2 < angle && angle < angles.dl[1] + Math.PI*2) {
+  } else if (angles.dl[0] + Math.PI*2 <= angle && angle <= angles.dl[1] + Math.PI*2) {
     var idealDirection = 'ul';
-  } else if (angles.l[0] + Math.PI*2 <= angle && angle <= angles.l[1] + Math.PI*2) {
+  } else if (angles.l[0] + Math.PI*2 < angle && angle < angles.l[1] + Math.PI*2) {
     var idealDirection = 'l';
-  } else if (angles.ul[0] + Math.PI*2 < angle && angle < angles.ul[1] + Math.PI*2) {
+  } else if (angles.ul[0] + Math.PI*2 <= angle && angle <= angles.ul[1] + Math.PI*2) {
     var idealDirection = 'dl';
   } else {
     console.trace("What direction to pick here? " + angle);
@@ -459,6 +459,9 @@ function tubeLine(name, color, otherLines, gridDesc) {
 function tubeLines(gridDesc) {
   return [
     tubeLine('Central', 'rgb(255,0,0)', [], gridDesc),
+    tubeLine('Picadilly', 'rgb(0,0,127)', [], gridDesc),
+    tubeLine('Jubilee', 'rgb(110,110,110)', [], gridDesc),
+    tubeLine('Bakerloo', 'rgb(160,100,0)', [], gridDesc),
   ];
 }
 
@@ -466,7 +469,7 @@ function drawLines(c, lines) {
   lines.forEach(function (line) {
     line.segments.forEach(function (edge) {
       var e = new fabric.Line([edge.a.x,edge.a.y,edge.b.x,edge.b.y], {
-        stroke: 'rgba(255,0,0,1)',
+        stroke: line.color,
         strokeWidth: 1
       });
       c.add(e);
@@ -483,10 +486,11 @@ function choumein() {
       backgroundColor: '#ffffff'
     }
   );
-  const rnd = new MersenneTwister(Date.now().valueOf());
+  const seed = Date.now().valueOf();
+  const rnd = new MersenneTwister(seed);
   fabric.Object.prototype.originX = fabric.Object.prototype.originY = 'center';
   
-  const gridDesc = gridDescription(0, 0, 20, 10, 0, 0, canvas.width-20, canvas.height-10, rnd);
+  const gridDesc = gridDescription(0, 0, 80, 40, 0, 0, canvas.width-20, canvas.height-10, rnd);
   console.log("Grid description");
   console.log(gridDesc);
   const lines = tubeLines(gridDesc);
@@ -496,7 +500,7 @@ function choumein() {
   
   const pngImageB64 = canvas.toDataURL({ format: 'png' });
   const pngImage = atob(pngImageB64.split(',')[1]);
-  fs.writeFileSync('metro-' + (Date.now().valueOf()) + '.png',pngImage,{encoding:'binary'});
+  fs.writeFileSync('metro-' + seed + '.png',pngImage,{encoding:'binary'});
 }
 
 choumein();
