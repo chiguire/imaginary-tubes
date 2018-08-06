@@ -454,29 +454,38 @@ function smoothLines(line1,line2, cornerSize, cornerDetail) { //line2 begins whe
   if (angleBetweenTwoVectors(line1,line2) < Number.EPSILON) {
     return [line1]; // same line, no need to smooth anything
   } else { // returns list of lines that form a curve
+    const line1Length = Math.sqrt(Math.pow(line1.b.x - line1.a.x, 2) + Math.pow(line1.b.y - line1.a.y, 2));
+    const line2Length = Math.sqrt(Math.pow(line2.b.x - line2.a.x, 2) + Math.pow(line2.b.y - line2.a.y, 2));
     const start = {
-      x: line1.a.x,
-      y: line1.a.y
+      x: line1.a.x + (1 - cornerSize/line1Length) * (line1.b.x - line1.a.x),
+      y: line1.a.y + (1 - cornerSize/line1Length) * (line1.b.y - line1.a.y)
     };
     const control1 = {
-      x: line1.b.x,
-      y: line1.b.y
+      x: line2.a.x,
+      y: line2.a.y
     };
     const end = {
-      x: line2.b.x,
-      y: line2.b.y
+      x: line2.a.x + (cornerSize/line2Length) * (line2.b.x - line2.a.x),
+      y: line2.a.y + (cornerSize/line2Length) * (line2.b.y - line2.a.y)
     }
     var points = [];
     for (var i = 0; i != cornerDetail + 1; i++) {
       points.push(deCasteljau(start, control1, control1, end, i/cornerDetail));
     }
-    var lines = [];
+    var lines = [{
+      a: line1.a,
+      b: start
+    }];
     for (var i = 0; i < points.length - 1; i++) {
       lines.push({
         a: points[i],
         b: points[i+1]
       });
     }
+    lines.push({
+      a: end,
+      b: line2.b
+    });
     return lines;
   }
 }
@@ -522,11 +531,11 @@ function choumein() {
       backgroundColor: '#ffffff'
     }
   );
-  const seed = Date.now().valueOf();
+  const seed = 1533575563163; //Date.now().valueOf();
   const rnd = new MersenneTwister(seed);
   fabric.Object.prototype.originX = fabric.Object.prototype.originY = 'center';
   
-  const gridDesc = gridDescription(0, 0, 80, 40, 0, 0, canvas.width-20, canvas.height-10, 10, 5, rnd);
+  const gridDesc = gridDescription(0, 0, 80, 40, 0, 0, canvas.width-20, canvas.height-10, 20, 5, rnd);
   console.log("Grid description");
   console.log(gridDesc);
   const lines = tubeLines(gridDesc);
