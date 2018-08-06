@@ -8,12 +8,15 @@ function gridDescription(originX, originY,
                          tileWidth, tileHeight, 
                          canvasOriginX, canvasOriginY, 
                          canvasWidth, canvasHeight, 
+                         cornerSize, cornerDetail,
                          randomGenerator) {
   const gridDescBasic = {
     originX,
     originY,
     tileWidth,
     tileHeight,
+    cornerSize,
+    cornerDetail,
     rnd: randomGenerator
   };
   const gridDescDims = {
@@ -206,14 +209,6 @@ function edgesFromPoint(tX,tY,gridDesc) {
 function drawTetrakisGrid(c, gridDesc) {
   const points = allVertices(gridDesc);
   const edges = allEdges(gridDesc);
-  // const newEdges = [].concat(
-    // edgesFromPoint(gridDesc.tl.tX, gridDesc.tl.tY, gridDesc),
-    // edgesFromPoint(gridDesc.tl.tX, gridDesc.br.tY, gridDesc),
-    // edgesFromPoint(gridDesc.br.tX, gridDesc.tl.tY, gridDesc),
-    // edgesFromPoint(gridDesc.br.tX, gridDesc.br.tY, gridDesc),
-    // edgesFromPoint(2, 2, gridDesc),
-    // edgesFromPoint(3, 4, gridDesc)
-  // );
   edges.forEach(function (edge) {
     var e = new fabric.Line([edge.a.x,edge.a.y,edge.b.x,edge.b.y], {
       stroke: 'rgba(3,3,3,0.33)',
@@ -231,14 +226,6 @@ function drawTetrakisGrid(c, gridDesc) {
     });
     c.add(p);
   });
-  
-  // newEdges.forEach(function (edge) {
-    // var e = new fabric.Line([edge.a.x,edge.a.y,edge.b.x,edge.b.y], {
-      // stroke: 'rgba(255,0,0,1)',
-      // strokeWidth: 1
-    // });
-    // c.add(e);
-  // });
 }
 
 function edgeExtremes() {
@@ -259,44 +246,7 @@ function vertexInsideGrid(tX, tY, gridDesc) {
          tY <= gridDesc.br.tY;
 }
 
-function chooseDirection(dX, dY, pX, pY, extremes, gridDesc) {
-  const possibleDirectionsFromPoint = directionsFromPoint(pX, pY, gridDesc);
-  
-  if (dX < 0) {
-    if (dY < 0) {        // ul
-      var preferredDirections = ['ul','u','l'];
-    } else if (dY > 0) { // dl
-      var preferredDirections = ['dl','d','l'];
-    } else {             // l
-      var preferredDirections = ['ul','l','dl'];
-    }
-  } else if (dX > 0) {
-    if (dY < 0) {        // ur
-      var preferredDirections = ['ur','u','r'];
-    } else if (dY > 0) { // dr
-      var preferredDirections = ['dr','d','r'];
-    } else {             // d
-      var preferredDirections = ['dr','d','dl'];
-    }
-  } else {
-    if (dY < 0) {        // u
-      var preferredDirections = ['ul','u','ur'];
-    } else if (dY > 0) { // d
-      var preferredDirections = ['dl','d','dr'];
-    } else {             // no direction, weird
-      console.log("no direction, weird");
-    }
-  }
-  
-  const dirs = preferredDirections.filter(function (d) {
-    return possibleDirectionsFromPoint.includes(d);
-  });
-  
-  return directionToXY(choose(dirs, gridDesc.rnd));
-}
-
-
-function chooseDirection2(diffX, diffY, absDiffX, absDiffY, pX, pY, generalDirection, gridDesc) {
+function chooseDirection(diffX, diffY, absDiffX, absDiffY, pX, pY, generalDirection, gridDesc) {
   const possibleDirectionsFromPoint = directionsFromPoint(pX, pY, gridDesc);
   var dX = null;
   var dY = null;
@@ -340,15 +290,61 @@ function chooseDirection2(diffX, diffY, absDiffX, absDiffY, pX, pY, generalDirec
 }
 
 function flatten(items) {
-	const flat = [];
-	items.forEach(item => {
-		if (Array.isArray(item)) {
-			flat.push(...flatten(item));
-		} else {
-			flat.push(item);
-		}
-	});
-	return flat;
+  const flat = [];
+  items.forEach(item => {
+    if (Array.isArray(item)) {
+      flat.push(...flatten(item));
+    } else {
+      flat.push(item);
+    }
+  });
+  return flat;
+}
+
+function dotProduct(vo0, vo1) {
+  return vo0.x*vo1.x + vo0.y*vo1.y;
+}
+
+function magnitude(v) {
+  return Math.sqrt(v.x*v.x + v.y*v.y);
+}
+
+function angleBetweenTwoVectors(v0, v1) {
+  const vo0 = {
+    x: v0.b.x - v0.a.x,
+    y: v0.b.y - v0.a.y,
+  };
+  const vo1 = {
+    x: v1.b.x - v1.a.x,
+    y: v1.b.y - v1.a.y,
+  };
+  const dot = dotProduct(vo0, vo1);
+  const mv0 = magnitude(vo0);
+  const mv1 = magnitude(vo1);
+  
+  return Math.acos(dot/(mv0*mv1));
+}
+
+function lerp(p1, p2, time) {
+  return {
+    x: p1.x + (p2.x - p1.x) * time,
+    y: p1.y + (p2.y - p1.y) * time,
+  };
+}
+
+function deCasteljau(start, control1, control2, end, time) {
+  //Outside Guide Lines
+  const outerA      = [start,    control1];
+  const outerBridge = [control1, control2];
+  const outerB      = [control2, end];
+  
+  //Inner Guide Lines
+  const innerA      = [lerp(outerA[0], outerA[1], time),           lerp(outerBridge[0], outerBridge[1], time)];
+  const innerB      = [lerp(outerBridge[0], outerBridge[1], time), lerp(outerB[0], outerB[1], time)];
+  const innerBridge = [lerp(innerA[0], innerB[1], time),           lerp(innerB[0], innerB[1], time)];
+ 
+  //Point at time
+  return lerp(innerBridge[0], innerBridge[1], time);
 }
 
 function recursiveLineBreak(lines, maxLevel, gridDesc) {
@@ -357,7 +353,9 @@ function recursiveLineBreak(lines, maxLevel, gridDesc) {
       x: Math.round(line.x0 + (line.x1-line.x0)/2),
       y: Math.round(line.y0 + (line.y1-line.y0)/2),
     };
-    //const midPointGrid = gridPointFromWorldSpace(midPoint.x, midPoint.y, gridDesc, Math.round);
+    // TODO generate points around midpoint, choose one to introduce a bit of noise
+    //const diff = generateDifferences(x, y, 5, 5, gridDesc);
+    //const selectedDiff = diff[gridDesc.rnd.
     return [
       {
         x0: line.x0,
@@ -389,7 +387,7 @@ function rasterizeLines(lines, extremes, gridDesc) {
     console.log("Rasterizing");
     console.log(line);
     while (absDiffX + absDiffY !== 0) {
-      const direction = chooseDirection2(diffX, diffY, absDiffX, absDiffY, pX, pY, extremes, gridDesc);
+      const direction = chooseDirection(diffX, diffY, absDiffX, absDiffY, pX, pY, extremes, gridDesc);
       const directionXY = directionToXY(direction);
       const dX = directionXY.x;
       const dY = directionXY.y;
@@ -441,8 +439,46 @@ function generateSegments(extremes, gridDesc) {
   console.log("Broken lines");
   console.log({brokenLines});
   const rasterizedLines = rasterizeLines(brokenLines, extremes, gridDesc);
-  
-  return rasterizedLines;
+  console.log("Rasterized lines");
+  console.log(rasterizedLines);
+  var smoothedLines = [];
+  for (var i = 0; i != rasterizedLines.segments.length - 1; i++) {
+    smoothedLines.push(...smoothLines(rasterizedLines.segments[i], rasterizedLines.segments[i+1], gridDesc.cornerSize, gridDesc.cornerDetail));
+  }
+  console.log(">>> SMOOTH CRIMINAL");
+  console.log(smoothedLines);
+  return { segments: smoothedLines, vertices: [] };
+}
+
+function smoothLines(line1,line2, cornerSize, cornerDetail) { //line2 begins where line1 ends
+  if (angleBetweenTwoVectors(line1,line2) < Number.EPSILON) {
+    return [line1]; // same line, no need to smooth anything
+  } else { // returns list of lines that form a curve
+    const start = {
+      x: line1.a.x,
+      y: line1.a.y
+    };
+    const control1 = {
+      x: line1.b.x,
+      y: line1.b.y
+    };
+    const end = {
+      x: line2.b.x,
+      y: line2.b.y
+    }
+    var points = [];
+    for (var i = 0; i != cornerDetail + 1; i++) {
+      points.push(deCasteljau(start, control1, control1, end, i/cornerDetail));
+    }
+    var lines = [];
+    for (var i = 0; i < points.length - 1; i++) {
+      lines.push({
+        a: points[i],
+        b: points[i+1]
+      });
+    }
+    return lines;
+  }
 }
 
 function tubeLine(name, color, otherLines, gridDesc) {
@@ -490,7 +526,7 @@ function choumein() {
   const rnd = new MersenneTwister(seed);
   fabric.Object.prototype.originX = fabric.Object.prototype.originY = 'center';
   
-  const gridDesc = gridDescription(0, 0, 80, 40, 0, 0, canvas.width-20, canvas.height-10, rnd);
+  const gridDesc = gridDescription(0, 0, 80, 40, 0, 0, canvas.width-20, canvas.height-10, 10, 5, rnd);
   console.log("Grid description");
   console.log(gridDesc);
   const lines = tubeLines(gridDesc);
