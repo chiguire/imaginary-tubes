@@ -433,21 +433,43 @@ function generateSegments(extremes, gridDesc) {
       break;
   }
   
-  console.log("Chosen extremes");
-  console.log({extremes,x0,y0,x1,y1});
+  //console.log("Chosen extremes");
+  //console.log({extremes,x0,y0,x1,y1});
   const brokenLines = recursiveLineBreak([{x0,y0,x1,y1}],1,gridDesc);
-  console.log("Broken lines");
-  console.log({brokenLines});
+  //console.log("Broken lines");
+  //console.log({brokenLines});
   const rasterizedLines = rasterizeLines(brokenLines, extremes, gridDesc);
-  console.log("Rasterized lines");
-  console.log(rasterizedLines);
+  //console.log("Rasterized lines");
+  //console.log(rasterizedLines);
+  const halvedLines = halveLines(rasterizedLines.segments);
   var smoothedLines = [];
-  for (var i = 0; i != rasterizedLines.segments.length - 1; i++) {
-    smoothedLines.push(...smoothLines(rasterizedLines.segments[i], rasterizedLines.segments[i+1], gridDesc.cornerSize, gridDesc.cornerDetail));
+  for (var i = 0; i < halvedLines.length - 1; i++) {
+    const smoothedSegment = smoothLines(halvedLines[i], halvedLines[i+1], gridDesc.cornerSize, gridDesc.cornerDetail);
+    smoothedLines.push(...smoothedSegment);
+    if (smoothedSegment.length !== 1) {
+      i++; // If smoothLines() has created a curved line, we have consumed both lines
+    }
   }
-  console.log(">>> SMOOTH CRIMINAL");
-  console.log(smoothedLines);
+  smoothedLines.push(halvedLines[halvedLines.length - 1]); // Push the last one
+  //console.log("Smoothed lines");
+  //console.log(smoothedLines);
   return { segments: smoothedLines, vertices: [] };
+}
+
+function halveLines(lines) {
+  return flatten(lines.map(function (line) {
+    const midpoint = lerp(line.a, line.b, 0.5);
+    return [
+      {
+        a: line.a,
+        b: midpoint,
+      },
+      {
+        a: midpoint,
+        b: line.b,
+      }
+    ];
+  }));
 }
 
 function smoothLines(line1,line2, cornerSize, cornerDetail) { //line2 begins where line1 ends
@@ -515,7 +537,7 @@ function drawLines(c, lines) {
     line.segments.forEach(function (edge) {
       var e = new fabric.Line([edge.a.x,edge.a.y,edge.b.x,edge.b.y], {
         stroke: line.color,
-        strokeWidth: 1
+        strokeWidth: 5
       });
       c.add(e);
     });
