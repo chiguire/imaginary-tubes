@@ -384,8 +384,8 @@ function rasterizeLines(lines, extremes, gridDesc) {
     var segments = [];
     var vertices = [gridPointFromGridSpace(pX, pY, gridDesc)];
     
-    console.log("Rasterizing");
-    console.log(line);
+    //console.log("Rasterizing");
+    //console.log(line);
     while (absDiffX + absDiffY !== 0) {
       const direction = chooseDirection(diffX, diffY, absDiffX, absDiffY, pX, pY, extremes, gridDesc);
       const directionXY = directionToXY(direction);
@@ -418,14 +418,14 @@ function generateSegments(extremes, gridDesc) {
   switch (extremes) {
     case 'lr':
       var x0 = 0;
-      var y0 = Math.floor(gridDesc.tl.tY+rnd.random()*(gridDesc.br.tY - gridDesc.tl.tY));
+      var y0 = Math.floor(gridDesc.tl.tY+1+rnd.random()*(gridDesc.br.tY - gridDesc.tl.tY - 2));
       var x1 = gridDesc.br.tX;
-      var y1 = Math.floor(gridDesc.tl.tY+rnd.random()*(gridDesc.br.tY - gridDesc.tl.tY));
+      var y1 = Math.floor(gridDesc.tl.tY+1+rnd.random()*(gridDesc.br.tY - gridDesc.tl.tY - 2));
       break;
     case 'ud':
-      var x0 = Math.floor(gridDesc.tl.tX+rnd.random()*(gridDesc.br.tX - gridDesc.tl.tX));
+      var x0 = Math.floor(gridDesc.tl.tX+1+rnd.random()*(gridDesc.br.tX - gridDesc.tl.tX - 2));
       var y0 = 0;
-      var x1 = Math.floor(gridDesc.tl.tX+rnd.random()*(gridDesc.br.tX - gridDesc.tl.tX));
+      var x1 = Math.floor(gridDesc.tl.tX+1+rnd.random()*(gridDesc.br.tX - gridDesc.tl.tX - 2));
       var y1 = gridDesc.br.tY;
       break;
     default:
@@ -453,7 +453,7 @@ function generateSegments(extremes, gridDesc) {
   smoothedLines.push(halvedLines[halvedLines.length - 1]); // Push the last one
   //console.log("Smoothed lines");
   //console.log(smoothedLines);
-  return { segments: smoothedLines, vertices: [] };
+  return { segments: smoothedLines, vertices: rasterizedLines.vertices };
 }
 
 function halveLines(lines) {
@@ -512,14 +512,42 @@ function smoothLines(line1,line2, cornerSize, cornerDetail) { //line2 begins whe
   }
 }
 
+function generatePotentialStations(vertices, gridDesc) {
+  // Scan vertices array from the beginning, put a station each X distance
+  // They're potential Stations because later in the process they could merge with interchanges
+  const lineLength = vertices.length;
+  const numberOfStations = Math.floor(lineLength/2.0); // TODO set as random
+  const distancePerStation = lineLength / numberOfStations;
+  var distanceCovered = 0;
+  var currentVertexIndex = 0;
+  var potentialStations = [
+    {
+      name: "Brandsforshire",
+      position: { x: 0, y: 0, tX: 0, tY: 0},
+      line: [], // A line that represents the station, London tube style, requires calculating vector direction
+      
+    },
+  ];
+  
+  do {
+    
+    
+  } while ()
+  
+  
+  return potentialStations;
+}
+
 function tubeLine(name, color, otherLines, gridDesc) {
   const extremes = choose(edgeExtremes(), gridDesc.rnd);
   const { segments, vertices } = generateSegments(extremes, gridDesc);
+  const { potentialStations } = generatePotentialStations(vertices, gridDesc);
   return {
     name,
     color,
     extremes,
-    segments, //layoutSegments
+    segments,
+    potentialStations,
   };
 }
 
@@ -533,14 +561,18 @@ function tubeLines(gridDesc) {
 }
 
 function drawLines(c, lines) {
+  
   lines.forEach(function (line) {
-    line.segments.forEach(function (edge) {
-      var e = new fabric.Line([edge.a.x,edge.a.y,edge.b.x,edge.b.y], {
+    const points = line.segments.map((segment) => ({ x: segment.a.x, y: segment.a.y })).concat([{ x: line.segments[line.segments.length-1].b.x, y: line.segments[line.segments.length-1].b.y }]);
+    var e = new fabric.Polyline(
+      points,
+      {
         stroke: line.color,
-        strokeWidth: 5
-      });
-      c.add(e);
-    });
+        strokeWidth: 5,
+        fill: 'transparent',
+      }
+    );
+    c.add(e);
   });
 }
 
@@ -553,11 +585,11 @@ function choumein() {
       backgroundColor: '#ffffff'
     }
   );
-  const seed = 1533575563163; //Date.now().valueOf();
+  const seed = Date.now().valueOf();
   const rnd = new MersenneTwister(seed);
-  fabric.Object.prototype.originX = fabric.Object.prototype.originY = 'center';
+  //fabric.Object.prototype.originX = fabric.Object.prototype.originY = 'center';
   
-  const gridDesc = gridDescription(0, 0, 80, 40, 0, 0, canvas.width-20, canvas.height-10, 20, 5, rnd);
+  const gridDesc = gridDescription(30, 10, 80, 80, 0, 0, canvas.width-20-80, canvas.height-20-80, 20, 5, rnd);
   console.log("Grid description");
   console.log(gridDesc);
   const lines = tubeLines(gridDesc);
