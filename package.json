@@ -1,0 +1,36 @@
+{
+  "name": "imaginary-tubes",
+  "version": "1.0.0",
+  "description": "A bot that draws imaginary tube maps",
+  "main": "metro.js",
+  "dependencies": {
+    "atob": "^2.1.1",
+    "canvas": "^1.6.11",
+    "fabric": "^2.3.3",
+    "mersenne-twister": "^1.1.0"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": "6.9.1"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chiguire/imaginary-tubes.git"
+  },
+  "keywords": [
+    "bot",
+    "tube",
+    "map",
+    "lines",
+    "subway"
+  ],
+  "author": "Ciro Duran",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/chiguire/imaginary-tubes/issues"
+  },
+  "homepage": "https://github.com/chiguire/imaginary-tubes#readme"
+}
