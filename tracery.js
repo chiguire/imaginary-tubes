@@ -3,7 +3,7 @@
  */
 
 var tracery = function() {
-
+  
     var TraceryNode = function(parent, childIndex, settings) {
         this.errors = [];
 
@@ -348,7 +348,7 @@ var tracery = function() {
                     // make an array
                     this.shuffledDeck = fyshuffle(Array.apply(null, {
                         length : this.defaultRules.length
-                    }).map(Number.call, Number), this.falloff);
+                    }).map(Number.call, Number), this.falloff, this.grammar.randomCall);
 
                 }
 
@@ -363,7 +363,7 @@ var tracery = function() {
                 break;
             default:
 
-                index = Math.floor(Math.pow(Math.random(), this.falloff) * this.defaultRules.length);
+                index = Math.floor(Math.pow(this.grammar.randomCall(), this.falloff) * this.defaultRules.length);
                 break;
             }
 
@@ -385,7 +385,7 @@ var tracery = function() {
         }
     };
 
-    function fyshuffle(array, falloff) {
+    function fyshuffle(array, falloff, randomCall) {
         var currentIndex = array.length,
             temporaryValue,
             randomIndex;
@@ -394,7 +394,7 @@ var tracery = function() {
         while (0 !== currentIndex) {
 
             // Pick a remaining element...
-            randomIndex = Math.floor(Math.random() * currentIndex);
+            randomIndex = Math.floor(randomCall() * currentIndex);
             currentIndex -= 1;
 
             // And swap it with the current element.
@@ -459,8 +459,9 @@ var tracery = function() {
         return JSON.stringify(this.rawRules);
     };
 
-    var Grammar = function(raw, settings) {
+    var Grammar = function(raw, randomCall, settings) {
         this.modifiers = {};
+        this.randomCall = randomCall;
         this.loadFromRawObj(raw);
     };
 
@@ -574,7 +575,7 @@ var tracery = function() {
     tracery = {
 
         createGrammar : function(raw) {
-            return new Grammar(raw);
+            return new Grammar(raw, this.randomCall);
         },
 
         // Parse the contents of a tag
@@ -849,6 +850,7 @@ var tracery = function() {
         }
     };
 
+    tracery.randomCall = function() { return Math.random(); };
     tracery.baseEngModifiers = baseEngModifiers; 
     // Externalize
     tracery.TraceryNode = TraceryNode;

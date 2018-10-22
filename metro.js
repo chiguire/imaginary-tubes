@@ -1,7 +1,22 @@
+const stationNamesGrammar = {
+	"origin": "#stationname.capitalize#",
+  "stationname": ["#somethingford#", "#somethingbury#", "#somethingstone#", "#somethingham#", "#something#"],
+  "somethingford": ["#something#ford"],
+  "somethingbury": ["#something#bury"],
+  "somethingstone": ["#something#stone"],
+  "somethingham": ["#something#ham"],
+  "something": ["leyton","ayles","crock","brad","mul","cad","ful","glad","bold","mert","am"],
+};
+
 const path = require('path'),
       atob = require('atob'),
       {fabric} = require('fabric'),
       fs = require('fs'),
+      createTracery = function (randomCall) {
+        var t = require('./tracery.js');
+        t.randomCall = randomCall;
+        return t;
+      },
       MersenneTwister = require('mersenne-twister');
 
 function gridDescription(originX, originY, 
@@ -9,6 +24,7 @@ function gridDescription(originX, originY,
                          canvasOriginX, canvasOriginY, 
                          canvasWidth, canvasHeight, 
                          cornerSize, cornerDetail,
+                         stationsTraceryGrammar,
                          randomGenerator) {
   const gridDescBasic = {
     originX,
@@ -17,6 +33,7 @@ function gridDescription(originX, originY,
     tileHeight,
     cornerSize,
     cornerDetail,
+    nextStationName: function () { return stationsTraceryGrammar.flatten('#origin#'); },
     rnd: randomGenerator
   };
   const gridDescDims = {
@@ -520,28 +537,24 @@ function generatePotentialStations(vertices, gridDesc) {
   const distancePerStation = lineLength / numberOfStations;
   var distanceCovered = 0;
   var currentVertexIndex = 0;
-  var potentialStations = [
-    {
-      name: "Brandsforshire",
-      position: { x: 0, y: 0, tX: 0, tY: 0},
-      line: [], // A line that represents the station, London tube style, requires calculating vector direction
-      
-    },
-  ];
-  
-  do {
-    
-    
-  } while ()
-  
-  
+  var indices = Array.apply(null, {length:vertices.length}).map(Number.call, Number);
+  var potentialStations = indices.map((i) => {
+    return {
+      name: gridDesc.nextStationName(),
+      position: vertices[i],
+      line: [vertices[i], {
+        x: vertices[i].x+20,
+        y: vertices[i].y+20
+      }], // A line that represents the station, London tube style, requires calculating vector direction
+    };
+  });
   return potentialStations;
 }
 
 function tubeLine(name, color, otherLines, gridDesc) {
   const extremes = choose(edgeExtremes(), gridDesc.rnd);
   const { segments, vertices } = generateSegments(extremes, gridDesc);
-  const { potentialStations } = generatePotentialStations(vertices, gridDesc);
+  const potentialStations = generatePotentialStations(vertices, gridDesc);
   return {
     name,
     color,
@@ -573,6 +586,26 @@ function drawLines(c, lines) {
       }
     );
     c.add(e);
+    
+    //console.trace(line);
+    const stations = line.potentialStations.map((station) => {
+      var l = new fabric.Line([station.line[0].x, station.line[0].y, station.line[1].x, station.line[1].y], {
+        stroke: line.color,
+        strokeWidth: 5
+      });
+      c.add(l);
+      
+      var t = new fabric.Text(station.name, {
+        left: station.position.x,
+        top: station.position.y,
+        fill: '#333333',
+        fontSize: 12,
+        fontWeight: 'normal',
+        fontFamily: 'Arial',
+        originY: 'bottom'
+      });
+      c.add(t);
+    });
   });
 }
 
@@ -589,7 +622,10 @@ function choumein() {
   const rnd = new MersenneTwister(seed);
   //fabric.Object.prototype.originX = fabric.Object.prototype.originY = 'center';
   
-  const gridDesc = gridDescription(30, 10, 80, 80, 0, 0, canvas.width-20-80, canvas.height-20-80, 20, 5, rnd);
+  const tracery = createTracery(function() { return rnd.random(); });
+  var grammar = tracery.createGrammar(stationNamesGrammar);
+  grammar.addModifiers(tracery.baseEngModifiers);
+  const gridDesc = gridDescription(30, 10, 80, 80, 0, 0, canvas.width-20-80, canvas.height-20-80, 20, 5, grammar, rnd);
   console.log("Grid description");
   console.log(gridDesc);
   const lines = tubeLines(gridDesc);
