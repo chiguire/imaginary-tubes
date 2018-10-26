@@ -31,7 +31,7 @@ app.use(express.static('public'));
 
 /* You can use cron-job.org, uptimerobot.com, or a similar site to hit your /BOT_ENDPOINT to wake up your app and make your Twitter bot tweet. */
 
-function tubeImage() {
+function tubeImage(seed) {
   const canvas = new fabric.Canvas(
     null, 
     {
@@ -40,7 +40,6 @@ function tubeImage() {
       backgroundColor: '#ffffff'
     }
   );
-  const seed = Date.now().valueOf();
   const rnd = new MersenneTwister(seed);
   const tracery = createTracery(function() { return rnd.random(); });
   var grammar = tracery.createGrammar(metro.stationNamesGrammar);
@@ -52,13 +51,13 @@ function tubeImage() {
   //drawTetrakisGrid(canvas, gridDesc);
   metro.drawLines(canvas, lines);
   
-  const pngImageB64 = canvas.toDataURL({ format: 'png' });
-  const pngImage = atob(pngImageB64.split(',')[1]);
+  const pngImageB64 = canvas.toDataURL({ format: 'png' }).split(',')[1];
+  const pngImage = atob(pngImageB64);
   return { pngImage, pngImageB64 };
 }
 
 app.all("/" + process.env.BOT_ENDPOINT, function (req, res) {
-  var bmk = bookmark.leer(bookmarkPath);
+  var bmk = bookmark.read(bookmarkPath);
   
   var now = Date.now();
   var timeBetweenTweetsMS = timeBetweenTweets * 60 * 1000;
@@ -68,7 +67,8 @@ app.all("/" + process.env.BOT_ENDPOINT, function (req, res) {
     return;
   }
   
-  const { pngImage, pngImageB64 } = tubeImage();
+  const seed = Date.now().valueOf();
+  const { pngImage, pngImageB64 } = tubeImage(seed);
   var media_id = 0;
 	console.log('Starting upload');
   T.post('media/upload',
@@ -98,7 +98,7 @@ app.all("/" + process.env.BOT_ENDPOINT, function (req, res) {
 						res.sendStatus(502);
 						return;
 					}
-					console.log('Finalizando envío');
+					console.log('Upload complete');
 					T.post('media/upload',
 						{
 							command: 'FINALIZE',
@@ -110,33 +110,21 @@ app.all("/" + process.env.BOT_ENDPOINT, function (req, res) {
 								res.sendStatus(502);
 								return;
 							}
-							console.log('Enviando tuit');
+							console.log('Send tweet');
 							T.post('statuses/update', 
-							Object.assign({
-								  status: parte.status,
-								  media_ids: [media_id],
-                  lat: 10.505314,
-                  long: -66.915711,
-                  display_coordinates: true,
-							  }, 
-                (ml.respuesta === null?
-                  {}:
-                  {
-                    in_reply_to_status_id: ml.respuesta,
-                  }
-                )
-              ),
+							{
+                status: "Tube map #" + seed,
+                media_ids: [media_id],
+              },
 							function(err, data, response) {
 								if (err){
 									console.log('error!', err);
 									res.sendStatus(502);
 								}
 								else{
-									console.log('Enviado tuit ' + JSON.stringify(parte) + ' correctamente');
+									console.log('Tweet sent! ' + seed);
                   
-                  ml.tuit += 1;
-                  ml.respuesta = data.id_str;
-                  marcalibro.escribir(marcalibroPath, ml);
+                  bookmark.write(bookmarkPath, bmk);
   
 									res.sendStatus(200);
 								}
@@ -151,7 +139,8 @@ app.all("/" + process.env.BOT_ENDPOINT, function (req, res) {
 });
 
 app.get("/gimme-an-image-please", function (req, res) {
-  const { pngImage, pngImageB64 } = tubeImage();
+  const seed = Date.now().valueOf();
+  const { pngImage, pngImageB64 } = tubeImage(seed);
   res.set('Content-Type', 'image/png');
   res.send(Buffer.from(pngImage, 'binary'));
 });
