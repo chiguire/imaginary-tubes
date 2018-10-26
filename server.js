@@ -21,7 +21,11 @@ var path = require('path'),
     },
     { fabric } = require('fabric'),
     atob = require('atob'),
+    { bookmark } = require('./bookmark.js'),
     MersenneTwister = require('mersenne-twister');
+
+const bookmarkPath = './bookmark.txt';
+const timeBetweenTweets = 60;
 
 app.use(express.static('public'));
 
@@ -50,24 +54,104 @@ function tubeImage() {
   
   const pngImageB64 = canvas.toDataURL({ format: 'png' });
   const pngImage = atob(pngImageB64.split(',')[1]);
-  return pngImage;
+  return { pngImage, pngImageB64 };
 }
 
 app.all("/" + process.env.BOT_ENDPOINT, function (req, res) {
-  const pngImage = tubeImage();
-  T.post('statuses/update', { status: 'hello world 👋' }, function(err, data, response) {
-    if (err){
-      console.log('error!', err);
-      res.sendStatus(500);
+  var bmk = bookmark.leer(bookmarkPath);
+  
+  var now = Date.now();
+  var timeBetweenTweetsMS = timeBetweenTweets * 60 * 1000;
+  if (bmk.fecha_ultimo_tuit + timeBetweenTweetsMS > now.valueOf()) {
+    console.log("Let's wait (last_tweet: "+ JSON.stringify(new Date(bmk.last_tweet).toJSON()) + ", now: " + JSON.stringify(new Date(now).toJSON()) + " bmk: "+JSON.stringify(bmk));
+    res.sendStatus(200);
+    return;
+  }
+  
+  const { pngImage, pngImageB64 } = tubeImage();
+  var media_id = 0;
+	console.log('Starting upload');
+  T.post('media/upload',
+    {
+      command: 'INIT',
+      total_bytes: pngImage.length,
+      media_type: 'image/png'
+    },
+    function (err, data, response) {
+      if (err) {
+				console.log(err);
+				res.sendStatus(502);
+				return;
+			}
+			media_id = data.media_id_string;
+      console.log('Sending ' + pngImage.length + ' bytes to media_id ' + media_id);
+			T.post('media/upload',
+				{
+					command: 'APPEND',
+					media_id: media_id,
+					media_data: pngImageB64,
+					segment_index: 0
+				},
+				function (err, data, response) {
+					if (err) {
+						console.log(err);
+						res.sendStatus(502);
+						return;
+					}
+					console.log('Finalizando envío');
+					T.post('media/upload',
+						{
+							command: 'FINALIZE',
+							media_id: media_id
+						},
+						function (err, data, response) {
+							if (err) {
+								console.log(err);
+								res.sendStatus(502);
+								return;
+							}
+							console.log('Enviando tuit');
+							T.post('statuses/update', 
+							Object.assign({
+								  status: parte.status,
+								  media_ids: [media_id],
+                  lat: 10.505314,
+                  long: -66.915711,
+                  display_coordinates: true,
+							  }, 
+                (ml.respuesta === null?
+                  {}:
+                  {
+                    in_reply_to_status_id: ml.respuesta,
+                  }
+                )
+              ),
+							function(err, data, response) {
+								if (err){
+									console.log('error!', err);
+									res.sendStatus(502);
+								}
+								else{
+									console.log('Enviado tuit ' + JSON.stringify(parte) + ' correctamente');
+                  
+                  ml.tuit += 1;
+                  ml.respuesta = data.id_str;
+                  marcalibro.escribir(marcalibroPath, ml);
+  
+									res.sendStatus(200);
+								}
+							}
+						);
+						}
+					);
+				}
+			);
     }
-    else{
-      res.sendStatus(200);
-    }
-  });
+  );
 });
 
 app.get("/gimme-an-image-please", function (req, res) {
-  const pngImage = tubeImage();
+  const { pngImage, pngImageB64 } = tubeImage();
   res.set('Content-Type', 'image/png');
   res.send(Buffer.from(pngImage, 'binary'));
 });
