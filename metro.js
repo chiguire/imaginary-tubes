@@ -665,8 +665,7 @@ function choumein() {
 }
 
 //choumein();
-exports = {
-  gridDescription,
-  tubeLines,
-  drawLines
-};
+exports.gridDescription = gridDescription;
+exports.tubeLines = tubeLines;
+exports.drawLines = drawLines;
+exports.stationNamesGrammar = stationNamesGrammar;
