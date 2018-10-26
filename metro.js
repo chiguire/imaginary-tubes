@@ -1,11 +1,14 @@
 const stationNamesGrammar = {
-	"origin": "#stationname.capitalize#",
-  "stationname": ["#somethingford#", "#somethingbury#", "#somethingstone#", "#somethingham#", "#something#"],
-  "somethingford": ["#something#ford"],
-  "somethingbury": ["#something#bury"],
-  "somethingstone": ["#something#stone"],
-  "somethingham": ["#something#ham"],
-  "something": ["leyton","ayles","crock","brad","mul","cad","ful","glad","bold","mert","am"],
+	"origin": ["#stationname.capitalize#","#stationname.capitalize#","#stationname.capitalize#","#stationname.capitalize# #location#"],
+  "location": ["Central", "West", "East", "North", "South"],
+  "stationname": ["#somethingford#", "#somethingbury#", "#somethingstone#", "#somethingham#", "#something#","#somethingalwaysalone#"],
+  "somethingford": ["#somethingneveralone#ford","#something#ford"],
+  "somethingbury": ["#somethingneveralone#bury","#something#bury"],
+  "somethingstone": ["#somethingneveralone#stone","#something#stone"],
+  "somethingham": ["#somethingneveralone#ham","#something#ham"],
+  "something": ["leyton","lewis","bard"],
+  "somethingneveralone": ["glad","bold","mert","am","cad","ful","mul","brad","ayles","crock","ark","boyd"],
+  "somethingalwaysalone": ["picadilly","victoria","elizabeth","george"],
 };
 
 const path = require('path'),
@@ -131,6 +134,10 @@ function gridPointFromGridSpace(tX,tY,gridDesc) {
     tX, 
     tY
   };
+}
+
+function equalsGridSpacePoints(a, b) {
+  return (a.tX == b.tX) && (a.tY == b.tY);
 }
 
 function edgeBetweenGridPoints(x0,y0,x1,y1,gridDesc) {
@@ -306,6 +313,13 @@ function chooseDirection(diffX, diffY, absDiffX, absDiffY, pX, pY, generalDirect
   }
 }
 
+function removeDuplicates(items, equals) {
+  // Assumes points are in the order they're drawn and thus duplicated items are grouped together
+  return items.filter((o, i, arr) => {
+    return (i == 0) || (!equals(arr[i-1], o));
+  });
+}
+
 function flatten(items) {
   const flat = [];
   items.forEach(item => {
@@ -364,11 +378,12 @@ function deCasteljau(start, control1, control2, end, time) {
   return lerp(innerBridge[0], innerBridge[1], time);
 }
 
-function recursiveLineBreak(lines, maxLevel, gridDesc) {
+function recursiveLineBreak(lines, maxLevel, extremes, gridDesc) {
   return flatten(lines.map(function (line) {
+    
     const midPoint = {
-      x: Math.round(line.x0 + (line.x1-line.x0)/2),
-      y: Math.round(line.y0 + (line.y1-line.y0)/2),
+      x: Math.round(line.x0 + (line.x1-line.x0)/2 + (extremes == 'ud'? gridDesc.rnd.random()*4: 0)),
+      y: Math.round(line.y0 + (line.y1-line.y0)/2 + (extremes == 'lr'? gridDesc.rnd.random()*4: 0)),
     };
     // TODO generate points around midpoint, choose one to introduce a bit of noise
     //const diff = generateDifferences(x, y, 5, 5, gridDesc);
@@ -426,7 +441,7 @@ function rasterizeLines(lines, extremes, gridDesc) {
   
   return {
     segments: flatten(rasterizedLines.map(l => l.segments)),
-    vertices: flatten(rasterizedLines.map(l => l.vertices)),
+    vertices: removeDuplicates(flatten(rasterizedLines.map(l => l.vertices)), equalsGridSpacePoints),
   };
 }
 
@@ -452,7 +467,7 @@ function generateSegments(extremes, gridDesc) {
   
   //console.log("Chosen extremes");
   //console.log({extremes,x0,y0,x1,y1});
-  const brokenLines = recursiveLineBreak([{x0,y0,x1,y1}],1,gridDesc);
+  const brokenLines = recursiveLineBreak([{x0,y0,x1,y1}],1,extremes,gridDesc);
   //console.log("Broken lines");
   //console.log({brokenLines});
   const rasterizedLines = rasterizeLines(brokenLines, extremes, gridDesc);
@@ -545,13 +560,13 @@ function generatePotentialStations(vertices, gridDesc) {
       line: [vertices[i], {
         x: vertices[i].x+20,
         y: vertices[i].y+20
-      }], // A line that represents the station, London tube style, requires calculating vector direction
+      }], // A line that represents the station, London tube style, requires calculating vector direction (TO-DO)
     };
   });
   return potentialStations;
 }
 
-function tubeLine(name, color, otherLines, gridDesc) {
+function tubeLine(name, color, gridDesc) {
   const extremes = choose(edgeExtremes(), gridDesc.rnd);
   const { segments, vertices } = generateSegments(extremes, gridDesc);
   const potentialStations = generatePotentialStations(vertices, gridDesc);
@@ -566,10 +581,10 @@ function tubeLine(name, color, otherLines, gridDesc) {
 
 function tubeLines(gridDesc) {
   return [
-    tubeLine('Central', 'rgb(255,0,0)', [], gridDesc),
-    tubeLine('Picadilly', 'rgb(0,0,127)', [], gridDesc),
-    tubeLine('Jubilee', 'rgb(110,110,110)', [], gridDesc),
-    tubeLine('Bakerloo', 'rgb(160,100,0)', [], gridDesc),
+    tubeLine('Central', 'rgb(255,0,0)', gridDesc),
+    tubeLine('Picadilly', 'rgb(0,0,127)', gridDesc),
+    tubeLine('Jubilee', 'rgb(110,110,110)', gridDesc),
+    tubeLine('Bakerloo', 'rgb(160,100,0)', gridDesc),
   ];
 }
 
@@ -582,18 +597,30 @@ function drawLines(c, lines) {
       {
         stroke: line.color,
         strokeWidth: 5,
-        fill: 'transparent',
+        fill: 'transparent'
       }
     );
     c.add(e);
     
     //console.trace(line);
     const stations = line.potentialStations.map((station) => {
-      var l = new fabric.Line([station.line[0].x, station.line[0].y, station.line[1].x, station.line[1].y], {
-        stroke: line.color,
-        strokeWidth: 5
+      //var l = new fabric.Line([station.line[0].x, station.line[0].y, station.line[1].x, station.line[1].y], {
+      //  stroke: line.color,
+      //  strokeWidth: 5
+      //});
+      //c.add(l);
+      
+      var circle = new fabric.Circle({
+        left: station.position.x,
+        top: station.position.y,
+        radius: 10,
+        fill: '#fff',
+        stroke: '#333',
+        strokeWidth: 3,
+        originX: 'center',
+        originY: 'center',
       });
-      c.add(l);
+      c.add(circle);
       
       var t = new fabric.Text(station.name, {
         left: station.position.x,
@@ -620,16 +647,15 @@ function choumein() {
   );
   const seed = Date.now().valueOf();
   const rnd = new MersenneTwister(seed);
-  //fabric.Object.prototype.originX = fabric.Object.prototype.originY = 'center';
   
   const tracery = createTracery(function() { return rnd.random(); });
   var grammar = tracery.createGrammar(stationNamesGrammar);
   grammar.addModifiers(tracery.baseEngModifiers);
-  const gridDesc = gridDescription(30, 10, 80, 80, 0, 0, canvas.width-20-80, canvas.height-20-80, 20, 5, grammar, rnd);
+  const gridDesc = gridDescription(80, 60, 80, 80, 0, 0, canvas.width-20-120, canvas.height-20-100, 20, 5, grammar, rnd);
   console.log("Grid description");
   console.log(gridDesc);
   const lines = tubeLines(gridDesc);
-  
+  console.trace(lines);
   drawTetrakisGrid(canvas, gridDesc);
   drawLines(canvas, lines);
   
