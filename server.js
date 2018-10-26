@@ -41,8 +41,6 @@ function tubeImage() {
   const tracery = createTracery(function() { return rnd.random(); });
   var grammar = tracery.createGrammar(metro.stationNamesGrammar);
   grammar.addModifiers(tracery.baseEngModifiers);
-  console.log("AMETRO");
-  console.log(metro);
   const gridDesc = metro.gridDescription(80, 60, 80, 80, 0, 0, canvas.width-20-120, canvas.height-20-100, 20, 5, grammar, rnd);
   //console.log(gridDesc);
   const lines = metro.tubeLines(gridDesc);
@@ -70,8 +68,9 @@ app.all("/" + process.env.BOT_ENDPOINT, function (req, res) {
 
 app.get("/gimme-an-image-please", function (req, res) {
   const pngImage = tubeImage();
+  console.log(pngImage[0]);
   res.set('Content-Type', 'image/png');
-  res.send(Buffer.from(pngImage));
+  res.send(pngImage);
 });
 
 var listener = app.listen(process.env.PORT, function () {
