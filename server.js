@@ -13,7 +13,8 @@ var path = require('path'),
       }
     },
     T = new Twit(config.twitter),
-    { metro } = require('./metro.js'),
+    metro = require('./metro.js'),
+    tracery = require('./tracery.js'),
     { fabric } = require('fabric'),
     MersenneTwister = require('mersenne-twister');
 
@@ -30,10 +31,11 @@ function tubeImage() {
       backgroundColor: '#ffffff'
     }
   );
-  const rnd = new MersenneTwister(Date.now().valueOf());
-  fabric.Object.prototype.originX = fabric.Object.prototype.originY = 'center';
+  const tracery = createTracery(function() { return rnd.random(); });
+  var grammar = tracery.createGrammar(metro.stationNamesGrammar);
+  grammar.addModifiers(tracery.baseEngModifiers);
   
-  const gridDesc = metro.gridDescription(0, 0, 20, 10, 0, 0, canvas.width-20, canvas.height-10, rnd);
+  const gridDesc = metro.gridDescription(80, 60, 80, 80, 0, 0, canvas.width-20-120, canvas.height-20-100, 20, 5, grammar, rnd);
   //console.log(gridDesc);
   const lines = metro.tubeLines(gridDesc);
   
@@ -56,6 +58,12 @@ app.all("/" + process.env.BOT_ENDPOINT, function (req, res) {
       res.sendStatus(200);
     }
   });
+});
+
+app.get("/gimme-an-image-please", function (req, res) {
+  const pngImage = tubeImage();
+  res.set('Content-Type', 'image/png');
+  res.send(new Buffer(pngImage));
 });
 
 var listener = app.listen(process.env.PORT, function () {
