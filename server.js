@@ -68,9 +68,8 @@ app.all("/" + process.env.BOT_ENDPOINT, function (req, res) {
 
 app.get("/gimme-an-image-please", function (req, res) {
   const pngImage = tubeImage();
-  console.log(pngImage[0]);
   res.set('Content-Type', 'image/png');
-  res.send(pngImage);
+  res.send(Buffer.from(pngImage, 'binary'));
 });
 
 var listener = app.listen(process.env.PORT, function () {

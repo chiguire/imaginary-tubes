@@ -1,5 +1,6 @@
-Glitch Twitter bot template 
+Imaginary Tubes
 ===================================
+
 
 ![Tweetin'](https://cdn.gomix.com/4032b241-bff8-473e-aa6b-eb0c92a4bd06%2Ftweeting.gif)
 
