@@ -1,3 +1,5 @@
+// Tracery is a wonderful library created by @GalaxyKate. This is a modified version that accepts a
+// callback to obtain random numbers, so it can be deterministic.
 /**
  * @author Kate
  */

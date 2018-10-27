@@ -651,7 +651,7 @@ function choumein() {
   const tracery = createTracery(function() { return rnd.random(); });
   var grammar = tracery.createGrammar(stationNamesGrammar);
   grammar.addModifiers(tracery.baseEngModifiers);
-  const gridDesc = gridDescription(80, 60, 80, 80, 0, 0, canvas.width-20-120, canvas.height-20-100, 20, 5, grammar, rnd);
+  const gridDesc = gridDescription(80, 60, 80, 80, 0, 0, canvas.width-20-120, canvas.height-20-100, 20, 5, b, rnd);
   console.log("Grid description");
   console.log(gridDesc);
   const lines = tubeLines(gridDesc);
@@ -664,9 +664,8 @@ function choumein() {
   fs.writeFileSync('metro-' + seed + '.png',pngImage,{encoding:'binary'});
 }
 
-choumein();
-exports = {
-  gridDescription,
-  tubeLines,
-  drawLines
-};
+//choumein();
+exports.gridDescription = gridDescription;
+exports.tubeLines = tubeLines;
+exports.drawLines = drawLines;
+exports.stationNamesGrammar = stationNamesGrammar;
