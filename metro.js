@@ -137,7 +137,7 @@ function gridPointFromGridSpace(tX,tY,gridDesc) {
 }
 
 function equalsGridSpacePoints(a, b) {
-  return (a.tX == b.tX) && (a.tY == b.tY);
+  return (a.tX === b.tX) && (a.tY === b.tY);
 }
 
 function edgeBetweenGridPoints(x0,y0,x1,y1,gridDesc) {
@@ -553,7 +553,7 @@ function generatePotentialStations(vertices, gridDesc) {
   var distanceCovered = 0;
   var currentVertexIndex = 0;
   var indices = Array.apply(null, {length:vertices.length}).map(Number.call, Number);
-  var potentialStations = indices.map((i) => {
+  var potentialStations = indices.map(i => {
     return {
       name: gridDesc.nextStationName(),
       position: vertices[i],
@@ -564,6 +564,20 @@ function generatePotentialStations(vertices, gridDesc) {
     };
   });
   return potentialStations;
+}
+
+function removeDuplicateStations(tubeLines, gridDesc) {
+  return tubeLines.map((tubeLine, i, tl) => {
+    tubeLine.potentialStations = tubeLine.potentialStations.filter(station => {
+      var nextLines = tl.slice(i+1, tl.length-i);
+      return !nextLines.some(nextLine => {
+        return nextLine.potentialStations.some(nextStation => {
+          return equalsGridSpacePoints(station.position, nextStation.position);
+        });
+      });
+    });
+    return tubeLine;
+  });
 }
 
 function tubeLine(name, color, gridDesc) {
@@ -580,12 +594,15 @@ function tubeLine(name, color, gridDesc) {
 }
 
 function tubeLines(gridDesc) {
-  return [
-    tubeLine('Central', 'rgb(255,0,0)', gridDesc),
-    tubeLine('Picadilly', 'rgb(0,0,127)', gridDesc),
-    tubeLine('Jubilee', 'rgb(110,110,110)', gridDesc),
-    tubeLine('Bakerloo', 'rgb(160,100,0)', gridDesc),
-  ];
+  return removeDuplicateStations(
+    [
+      tubeLine('Central', 'rgb(255,0,0)', gridDesc),
+      tubeLine('Picadilly', 'rgb(0,0,127)', gridDesc),
+      tubeLine('Jubilee', 'rgb(110,110,110)', gridDesc),
+      tubeLine('Bakerloo', 'rgb(160,100,0)', gridDesc),
+    ],
+    gridDesc
+  );
 }
 
 function drawLines(c, lines) {
@@ -651,7 +668,7 @@ function choumein() {
   const tracery = createTracery(function() { return rnd.random(); });
   var grammar = tracery.createGrammar(stationNamesGrammar);
   grammar.addModifiers(tracery.baseEngModifiers);
-  const gridDesc = gridDescription(80, 60, 80, 80, 0, 0, canvas.width-20-120, canvas.height-20-100, 20, 5, b, rnd);
+  const gridDesc = gridDescription(80, 60, 80, 80, 0, 0, canvas.width-20-120, canvas.height-20-100, 20, 5, grammar, rnd);
   console.log("Grid description");
   console.log(gridDesc);
   const lines = tubeLines(gridDesc);
@@ -664,7 +681,10 @@ function choumein() {
   fs.writeFileSync('metro-' + seed + '.png',pngImage,{encoding:'binary'});
 }
 
-//choumein();
+if (require.main === module) {
+  choumein();
+}
+
 exports.gridDescription = gridDescription;
 exports.tubeLines = tubeLines;
 exports.drawLines = drawLines;
