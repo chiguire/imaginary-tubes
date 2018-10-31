@@ -131,8 +131,8 @@ function gridPointFromGridSpace(tX,tY,gridDesc) {
   return {
     x: toWorldCoordX(tX,gridDesc),
     y: toWorldCoordY(tY,gridDesc), 
-    tX, 
-    tY
+    tX: Math.floor(tX), 
+    tY: Math.floor(tY)
   };
 }
 
@@ -568,8 +568,8 @@ function generatePotentialStations(vertices, gridDesc) {
 
 function removeDuplicateStations(tubeLines, gridDesc) {
   return tubeLines.map((tubeLine, i, tl) => {
-    tubeLine.potentialStations = tubeLine.potentialStations.filter(station => {
-      var nextLines = tl.slice(i+1, tl.length-i);
+    tubeLine.stations = tubeLine.potentialStations.filter(station => {
+      var nextLines = tl.slice(i+1, tl.length);
       return !nextLines.some(nextLine => {
         return nextLine.potentialStations.some(nextStation => {
           return equalsGridSpacePoints(station.position, nextStation.position);
@@ -620,7 +620,9 @@ function drawLines(c, lines) {
     c.add(e);
     
     //console.trace(line);
-    const stations = line.potentialStations.map((station) => {
+    //console.log(line.name);
+    //console.log(line.stations.map(station => (station.name + " " + station.position.tX + "," + station.position.tY)));
+    const stations = line.stations.map(station => {
       //var l = new fabric.Line([station.line[0].x, station.line[0].y, station.line[1].x, station.line[1].y], {
       //  stroke: line.color,
       //  strokeWidth: 5
@@ -669,10 +671,10 @@ function choumein() {
   var grammar = tracery.createGrammar(stationNamesGrammar);
   grammar.addModifiers(tracery.baseEngModifiers);
   const gridDesc = gridDescription(80, 60, 80, 80, 0, 0, canvas.width-20-120, canvas.height-20-100, 20, 5, grammar, rnd);
-  console.log("Grid description");
-  console.log(gridDesc);
+  //console.log("Grid description");
+  //console.log(gridDesc);
   const lines = tubeLines(gridDesc);
-  console.trace(lines);
+  //console.trace(lines);
   drawTetrakisGrid(canvas, gridDesc);
   drawLines(canvas, lines);
   
