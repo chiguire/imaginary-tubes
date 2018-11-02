@@ -25,7 +25,7 @@ var path = require('path'),
     MersenneTwister = require('mersenne-twister');
 
 const bookmarkPath = './bookmark.txt';
-const timeBetweenTweets = 60;
+const timeBetweenTweets = 180;
 
 app.use(express.static('public'));
 
@@ -61,7 +61,7 @@ app.all("/" + process.env.BOT_ENDPOINT, function (req, res) {
   
   var now = Date.now();
   var timeBetweenTweetsMS = timeBetweenTweets * 60 * 1000;
-  if (bmk.fecha_ultimo_tuit + timeBetweenTweetsMS > now.valueOf()) {
+  if (bmk.last_tweet + timeBetweenTweetsMS > now.valueOf()) {
     console.log("Let's wait (last_tweet: "+ JSON.stringify(new Date(bmk.last_tweet).toJSON()) + ", now: " + JSON.stringify(new Date(now).toJSON()) + " bmk: "+JSON.stringify(bmk));
     res.sendStatus(200);
     return;
