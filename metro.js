@@ -26,7 +26,7 @@ function gridDescription(originX, originY,
                          tileWidth, tileHeight, 
                          canvasOriginX, canvasOriginY, 
                          canvasWidth, canvasHeight, 
-                         cornerSize, cornerDetail,
+                         cornerSize, cornerDetail, lineWidth,
                          stationsTraceryGrammar,
                          randomGenerator) {
   const gridDescBasic = {
@@ -131,8 +131,8 @@ function gridPointFromGridSpace(tX,tY,gridDesc) {
   return {
     x: toWorldCoordX(tX,gridDesc),
     y: toWorldCoordY(tY,gridDesc), 
-    tX, 
-    tY
+    tX: Math.floor(tX), 
+    tY: Math.floor(tY)
   };
 }
 
@@ -473,6 +473,11 @@ function generateSegments(extremes, gridDesc) {
   const rasterizedLines = rasterizeLines(brokenLines, extremes, gridDesc);
   //console.log("Rasterized lines");
   //console.log(rasterizedLines);
+  
+  return { segments: rasterizedLines.segments, vertices: rasterizedLines.vertices };
+}
+
+/* TODO -- Apply smoothing after processing lines among each other
   const halvedLines = halveLines(rasterizedLines.segments);
   var smoothedLines = [];
   for (var i = 0; i < halvedLines.length - 1; i++) {
@@ -485,8 +490,7 @@ function generateSegments(extremes, gridDesc) {
   smoothedLines.push(halvedLines[halvedLines.length - 1]); // Push the last one
   //console.log("Smoothed lines");
   //console.log(smoothedLines);
-  return { segments: smoothedLines, vertices: rasterizedLines.vertices };
-}
+  */
 
 function halveLines(lines) {
   return flatten(lines.map(function (line) {
@@ -566,10 +570,20 @@ function generatePotentialStations(vertices, gridDesc) {
   return potentialStations;
 }
 
+function separateParallelLineSegments(tubeLines, gridDesc) {
+  return tubeLines.map((tubeLine, i, tl) => {
+    tubeLine.segments = tubeLine.potentialStations.filter(station => {
+      var nextLines = tl.slice(i+1, tl.length);
+      return 
+    });
+    return tubeLine;
+  });
+}
+
 function removeDuplicateStations(tubeLines, gridDesc) {
   return tubeLines.map((tubeLine, i, tl) => {
-    tubeLine.potentialStations = tubeLine.potentialStations.filter(station => {
-      var nextLines = tl.slice(i+1, tl.length-i);
+    tubeLine.stations = tubeLine.potentialStations.filter(station => {
+      var nextLines = tl.slice(i+1, tl.length);
       return !nextLines.some(nextLine => {
         return nextLine.potentialStations.some(nextStation => {
           return equalsGridSpacePoints(station.position, nextStation.position);
@@ -594,18 +608,22 @@ function tubeLine(name, color, gridDesc) {
 }
 
 function tubeLines(gridDesc) {
-  return removeDuplicateStations(
-    [
-      tubeLine('Central', 'rgb(255,0,0)', gridDesc),
-      tubeLine('Picadilly', 'rgb(0,0,127)', gridDesc),
-      tubeLine('Jubilee', 'rgb(110,110,110)', gridDesc),
-      tubeLine('Bakerloo', 'rgb(160,100,0)', gridDesc),
-    ],
-    gridDesc
-  );
+  return 
+    separateParallelLineSegments(
+      removeDuplicateStations(
+        [
+          tubeLine('Central', 'rgb(255,0,0)', gridDesc),
+          tubeLine('Picadilly', 'rgb(0,0,127)', gridDesc),
+          tubeLine('Jubilee', 'rgb(110,110,110)', gridDesc),
+          tubeLine('Bakerloo', 'rgb(160,100,0)', gridDesc),
+        ],
+        gridDesc
+      ),
+      gridDesc
+    );
 }
 
-function drawLines(c, lines) {
+function drawLines(c, lines, gridDesc) {
   
   lines.forEach(function (line) {
     const points = line.segments.map((segment) => ({ x: segment.a.x, y: segment.a.y })).concat([{ x: line.segments[line.segments.length-1].b.x, y: line.segments[line.segments.length-1].b.y }]);
@@ -613,14 +631,16 @@ function drawLines(c, lines) {
       points,
       {
         stroke: line.color,
-        strokeWidth: 5,
+        strokeWidth: gridDesc.lineWidth,
         fill: 'transparent'
       }
     );
     c.add(e);
     
     //console.trace(line);
-    const stations = line.potentialStations.map((station) => {
+    //console.log(line.name);
+    //console.log(line.stations.map(station => (station.name + " " + station.position.tX + "," + station.position.tY)));
+    const stations = line.stations.map(station => {
       //var l = new fabric.Line([station.line[0].x, station.line[0].y, station.line[1].x, station.line[1].y], {
       //  stroke: line.color,
       //  strokeWidth: 5
@@ -668,13 +688,27 @@ function choumein() {
   const tracery = createTracery(function() { return rnd.random(); });
   var grammar = tracery.createGrammar(stationNamesGrammar);
   grammar.addModifiers(tracery.baseEngModifiers);
-  const gridDesc = gridDescription(80, 60, 80, 80, 0, 0, canvas.width-20-120, canvas.height-20-100, 20, 5, grammar, rnd);
-  console.log("Grid description");
-  console.log(gridDesc);
+  const gridDesc = gridDescription(
+    80,                   // originX
+    60,                   // originY
+    80,                   // tileWidth
+    80,                   // tileHeight
+    0,                    // canvasOriginX
+    0,                    // canvasOriginY
+    canvas.width-20-120,  // canvasWidth
+    canvas.height-20-100, // canvasHeight
+    20,                   // cornerSize
+    5,                    // cornerDetail
+    5,                    // lineWidth
+    grammar,              // traceryGrammar
+    rnd                   // randomGenerator
+  );
+  //console.log("Grid description");
+  //console.log(gridDesc);
   const lines = tubeLines(gridDesc);
-  console.trace(lines);
+  //console.trace(lines);
   drawTetrakisGrid(canvas, gridDesc);
-  drawLines(canvas, lines);
+  drawLines(canvas, lines, gridDesc);
   
   const pngImageB64 = canvas.toDataURL({ format: 'png' });
   const pngImage = atob(pngImageB64.split(',')[1]);
