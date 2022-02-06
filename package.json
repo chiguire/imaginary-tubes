@@ -9,9 +9,9 @@
 	"dependencies": {
 		"twit": "^2.1.0",
 		"express": "^4.14.0",
-    "fabric": "^2.3.3",
-    "mersenne-twister": "^1.0.0",
-    "atob": "^2.1.1"
+		"fabric": "^2.3.3",
+		"mersenne-twister": "^1.0.0",
+		"atob": "^2.1.1"
 	},
 	"engines": {
 		"node": "6.9.1"
@@ -21,9 +21,9 @@
 	},
 	"keywords": [
 		"node",
-    "glitch",
+		"glitch",
 		"gomix",
-    "hyperdev",
+		"hyperdev",
 		"twitter",
 		"twitterbot",
 		"bot"
