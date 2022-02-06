@@ -1,5 +1,4 @@
 /* Setting things up. */
-const env = require('./.env.json');
 var path = require('path'),
     express = require('express'),
     app = express(),   
@@ -7,10 +6,10 @@ var path = require('path'),
     config = {
     /* Be sure to update the .env file with your API keys. See how to get them: https://botwiki.org/tutorials/how-to-create-a-twitter-app */      
       twitter: {
-        consumer_key: env.CONSUMER_KEY,
-        consumer_secret: env.CONSUMER_SECRET,
-        access_token: env.ACCESS_TOKEN,
-        access_token_secret: env.ACCESS_TOKEN_SECRET
+        consumer_key: process.env.CONSUMER_KEY,
+        consumer_secret: process.env.CONSUMER_SECRET,
+        access_token: process.env.ACCESS_TOKEN,
+        access_token_secret: process.env.ACCESS_TOKEN_SECRET
       }
     },
     T = new Twit(config.twitter),
@@ -57,7 +56,7 @@ function tubeImage(seed) {
   return { pngImage, pngImageB64 };
 }
 
-app.all("/" + env.BOT_ENDPOINT, function (req, res) {
+app.all("/" + process.env.BOT_ENDPOINT, function (req, res) {
   var bmk = bookmark.read(bookmarkPath);
   
   var now = Date.now();
@@ -146,6 +145,6 @@ app.get("/gimme-an-image-please", function (req, res) {
   res.send(Buffer.from(pngImage, 'binary'));
 });
 
-var listener = app.listen(env.PORT, function () {
+var listener = app.listen(process.env.PORT, function () {
   console.log('Your bot is running on port ' + listener.address().port);
 });
