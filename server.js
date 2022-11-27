@@ -27,6 +27,10 @@ var path = require('path'),
     post_to_twitter = true,
     M = new Mastodon(mastodon_config.url, mastodon_config.access_token),
     post_to_mastodon = true,
+    sent_to = {
+      'twitter': false,
+      'mastodon': false,
+    },
     metro = require('./metro.js'),
     createTracery = function (randomCall) {
       var t = require('./tracery.js');
@@ -96,6 +100,23 @@ function tubeImageSansExceptions() {
   } while (!tubePassed);
 
   return { seed, pngImage, pngImageB64 };
+}
+
+function canIReturn200(where) {
+  if (sent_to[where]) {
+    console.log("Warning: signalling again? " + where);
+  }
+
+  sent_to[where] = true;
+
+  if (where == 'twitter' && !post_to_mastodon) {
+    return true;
+  } else if (where == 'mastodon' && !post_to_twitter) {
+    return true;
+  } else if (sent_to['twitter'] && sent_to['mastodon']) {
+    return true;
+  }
+  return false;
 }
 
 app.all("/" + process.env.BOT_ENDPOINT, function (req, res) {
@@ -169,8 +190,10 @@ app.all("/" + process.env.BOT_ENDPOINT, function (req, res) {
                     console.log('Tweet sent! ' + seed);
                     
                     bookmark.write(bookmarkPath, bmk);
-    
-                    res.sendStatus(200);
+                    
+                    if (canIReturn200('twitter')) {
+                      res.sendStatus(200);
+                    }
                   }
                 }
               );
@@ -197,7 +220,10 @@ app.all("/" + process.env.BOT_ENDPOINT, function (req, res) {
           .then((tootRes /* : Response<Entity.Status> */) => {
             console.log('Toot sent!');
             bookmark.write(bookmarkPath, bmk);
-            res.sendStatus(200);
+
+            if (canIReturn200('mastodon')) {
+              res.sendStatus(200);
+            }
           }).catch((err) => {
             console.log("Error when sending toot.");
             console.log(err);
@@ -212,6 +238,8 @@ app.all("/" + process.env.BOT_ENDPOINT, function (req, res) {
       });
   }
 });
+
+
 
 app.get("/gimme-an-image-please", function (req, res) {
   const seed = Date.now().valueOf();
