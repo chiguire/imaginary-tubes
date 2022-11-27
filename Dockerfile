@@ -1,4 +1,4 @@
-FROM node:6
+FROM node:lts-slim
 RUN apt-get update && apt-get install -y \
   libcairo2-dev \
   libjpeg-dev \
@@ -14,7 +14,7 @@ WORKDIR /usr/src/app
 # Install app dependencies
 COPY package*.json ./
 
-RUN npm install
+RUN npm install --verbose
 
 COPY . .
 

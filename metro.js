@@ -12,7 +12,6 @@ const stationNamesGrammar = {
 };
 
 const path = require('path'),
-      atob = require('atob'),
       {fabric} = require('fabric'),
       fs = require('fs'),
       createTracery = function (randomCall) {
@@ -679,7 +678,7 @@ function choumein() {
   drawLines(canvas, lines);
   
   const pngImageB64 = canvas.toDataURL({ format: 'png' });
-  const pngImage = atob(pngImageB64.split(',')[1]);
+  const pngImage = Buffer.from(pngImageB64.split(',')[1], 'base64');
   fs.writeFileSync('metro-' + seed + '.png',pngImage,{encoding:'binary'});
 }
 
